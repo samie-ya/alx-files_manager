@@ -20,9 +20,9 @@ exports.getConnect = async (request, response) => {
     const token = uuidv4();
     const key = `auth_${token}`;
     await redisClient.set(key, JSON.stringify(user._id), 1000 * 60 * 60 * 24);
-    response.status(200).json({ token });
+    response.status(200).send({ token });
   } else {
-    response.status(401).json({ error: 'Unauthorized' });
+    response.status(401).send({ error: 'Unauthorized' });
   }
 };
 
@@ -34,8 +34,8 @@ exports.getDisconnect = async (request, response) => {
   const user = await dbClient.database.collection('users').findOne({ _id: ObjectId(JSON.parse(userId)) });
   if (user) {
     await redisClient.del(key);
-    response.status(204).json();
+    response.status(204).send();
   } else {
-    response.status(401).json({ error: 'Unauthorized' });
+    response.status(401).send({ error: 'Unauthorized' });
   }
 };
