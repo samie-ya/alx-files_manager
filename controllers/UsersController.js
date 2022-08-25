@@ -8,20 +8,21 @@ const { ObjectId } = require('mongodb');
 exports.postNew = async (request, response) => {
   const { email } = request.body;
   const { password } = request.body;
+
   if (!email) {
-    response.status(400).send({ error: 'Missing email' });
-  }
-  if (!password) {
-    response.status(400).send({ error: 'Missing password' });
-  }
-  const emailFound = await dbClient.database.collection('users').find({ email }).toArray();
-  if (emailFound.length > 0) {
-    response.status(400).send({ error: 'Already exist' });
+    response.status(400).json({ error: 'Missing email' });
+  } else if (!password) {
+    response.status(400).json({ error: 'Missing password' });
   } else {
-    const hashed = sha1(password);
-    const user = await dbClient.database.collection('users').insertOne({ email, password: hashed });
-    const id = user.insertedId;
-    response.status(201).send({ id, email });
+    const emailFound = await dbClient.database.collection('users').find({ email }).toArray();
+    if (emailFound.length > 0) {
+      response.status(400).json({ error: 'Already exist' });
+    } else {
+      const hashed = sha1(password);
+      const user = await dbClient.database.collection('users').insertOne({ email, password: hashed });
+      const id = user.insertedId;
+      response.status(201).json({ id, email });
+    }
   }
 };
 
