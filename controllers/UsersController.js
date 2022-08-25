@@ -1,7 +1,7 @@
 // This script will create endpoint to add users to database
+import sha1 from 'sha1';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
-import sha1 from 'sha1';
 
 const { ObjectId } = require('mongodb');
 
@@ -18,7 +18,7 @@ exports.postNew = async (request, response) => {
   if (emailFound.length > 0) {
     response.status(400).send({ error: 'Already exist' });
   } else {
-    const hashed = sha(password);
+    const hashed = sha1(password);
     const user = await dbClient.database.collection('users').insertOne({ email, password: hashed });
     const id = user.insertedId;
     response.status(201).send({ id, email });
