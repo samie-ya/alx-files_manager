@@ -31,7 +31,7 @@ exports.getMe = async (request, response) => {
   const token = headers['x-token'];
   const key = `auth_${token}`;
   const userId = await redisClient.get(key);
-  const user = await dbClient.database.collection('users').findOne({ _id: ObjectId(JSON.parse(userId)) });
+  const user = await dbClient.database.collection('users').findOne({ _id: ObjectId(userId) });
   if (user) {
     response.send({ id: user._id, email: user.email });
   } else {
