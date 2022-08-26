@@ -4,6 +4,9 @@ import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
 
 const { ObjectId } = require('mongodb');
+const Queue = require('bull');
+
+const userQueue = new Queue('userQueue');
 
 exports.postNew = async (request, response) => {
   const { email } = request.body;
@@ -21,6 +24,7 @@ exports.postNew = async (request, response) => {
       const hashed = sha1(password);
       const user = await dbClient.database.collection('users').insertOne({ email, password: hashed });
       const id = user.insertedId;
+      userQueue.add({ userId: id });
       response.status(201).json({ id, email });
     }
   }
