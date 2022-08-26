@@ -5,6 +5,7 @@ import redisClient from '../utils/redis';
 
 const { ObjectId } = require('mongodb');
 const fs = require('fs');
+// const queue = require('bull');
 
 exports.postUpload = async (request, response) => {
   const { headers } = request;
@@ -275,6 +276,8 @@ exports.getFile = async (request, response) => {
   } else if (file.isPublic === false) {
     if (!token) {
       response.status(404).send({ error: 'Not found' });
+    } else if (file.userId !== user._id) {
+      response.status(404).send({ error: 'Not found' });
     } else {
       fs.readFile(file.localPath, (err, content) => {
         if (err) {
@@ -285,6 +288,15 @@ exports.getFile = async (request, response) => {
     }
   } else if (file.isPublic === true) {
     if (!token) {
+      fs.readFile(file.localPath, (err, content) => {
+        if (err) {
+          console.log(err);
+        }
+        response.send(content);
+      });
+    } else if (file.userId !== user._id) {
+      response.status(404).send({ error: 'Not found' });
+    } else {
       fs.readFile(file.localPath, (err, content) => {
         if (err) {
           console.log(err);
