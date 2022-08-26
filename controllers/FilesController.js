@@ -127,3 +127,77 @@ exports.postUpload = async (request, response) => {
     }
   }
 };
+
+exports.getShow = async (request, response) => {
+  const fileId = request.params.id;
+  const { headers } = request;
+  const token = headers['x-token'];
+  const key = `auth_${token}`;
+  const userId = await redisClient.get(key);
+  const user = await dbClient.database.collection('users').findOne({ _id: ObjectId(userId) });
+  if (!user) {
+    response.status(401).send({ error: 'Unauthorized' });
+  } else {
+    const file = await dbClient.database.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(user._id) });
+    if (file) {
+      response.send({
+        id: file._id,
+        userId: file.userId,
+        name: file.name,
+        type: file.type,
+        isPublic: file.isPublic,
+        parentId: file.parentId,
+      });
+    } else {
+      response.status(404).send({ error: 'Not found' });
+    }
+  }
+};
+
+exports.getIndex = async (request, response) => {
+  const { headers } = request;
+  const token = headers['x-token'];
+  const key = `auth_${token}`;
+  const userId = await redisClient.get(key);
+
+  const parentId = request.query.parentId || 0;
+  const page = request.query.page || 0;
+  const user = await dbClient.database.collection('users').findOne({ _id: ObjectId(userId) });
+  if (!user) {
+    response.status(401).send({ error: 'Unauthorized' });
+  } else if (!parentId) {
+    const files = await dbClient.database.collection('files').find({ userId: ObjectId(user._id) }).skip(20 * page).limit(20)
+      .toArray();
+    const newList = [];
+    for (const file of files) {
+      const dict = {};
+      dict.id = file._id;
+      dict.userId = file.userId;
+      dict.name = file.name;
+      dict.type = file.type;
+      dict.isPublic = file.isPublic;
+      dict.parentId = file.parentId;
+      newList.push(dict);
+    }
+    response.send(newList);
+  } else {
+    try {
+      const files = await dbClient.database.collection('files').find({ userId: ObjectId(user._id), parentId: ObjectId(parentId) }).skip(20 * page).limit(20)
+        .toArray();
+      const newList = [];
+      for (const file of files) {
+        const dict = {};
+        dict.id = file._id;
+        dict.userId = file.userId;
+        dict.name = file.name;
+        dict.type = file.type;
+        dict.isPublic = file.isPublic;
+        dict.parentId = file.parentId;
+        newList.push(dict);
+      }
+      response.send(newList);
+    } catch (err) {
+      response.send([]);
+    }
+  }
+};
