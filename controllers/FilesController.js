@@ -257,3 +257,40 @@ exports.putUnpublish = async (request, response) => {
     }
   }
 };
+
+exports.getFile = async (request, response) => {
+  const fileId = request.params.id;
+  const { headers } = request;
+  const token = headers['x-token'];
+  const key = `auth_${token}`;
+  const userId = await redisClient.get(key);
+  const user = await dbClient.database.collection('users').findOne({ _id: ObjectId(userId) });
+  const file = await dbClient.database.collection('files').findOne({ _id: ObjectId(fileId) });
+  if (!file) {
+    response.status(404).send({ error: 'Not found' });
+  } else if (file.type === 'folder') {
+    response.status(400).send({ error: 'A folder doesn\'t have content' });
+  } else if (!fs.existsSync(file.localPath)) {
+    response.status(404).send({ error: 'Not found' });
+  } else if (file.isPublic === false) {
+    if (!token) {
+      response.status(404).send({ error: 'Not found' });
+    } else {
+      fs.readFile(file.localPath, (err, content) => {
+        if (err) {
+          console.log(err);
+        }
+        response.send(content);
+      });
+    }
+  } else if (file.isPublic === true) {
+    if (!token) {
+      fs.readFile(file.localPath, (err, content) => {
+        if (err) {
+          console.log(err);
+        }
+        response.send(content);
+      });
+    }
+  }
+};
