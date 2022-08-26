@@ -201,3 +201,59 @@ exports.getIndex = async (request, response) => {
     }
   }
 };
+
+exports.putPublish = async (request, response) => {
+  const fileId = request.params.id;
+  const { headers } = request;
+  const token = headers['x-token'];
+  const key = `auth_${token}`;
+  const userId = await redisClient.get(key);
+  const user = await dbClient.database.collection('users').findOne({ _id: ObjectId(userId) });
+  if (!user) {
+    response.status(401).send({ error: 'Unauthorized' });
+  } else {
+    const file = await dbClient.database.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(user._id) });
+    if (file) {
+      await dbClient.database.collection('files').updateOne({ _id: ObjectId(fileId) }, { $set: { isPublic: true } });
+      const file = await dbClient.database.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(user._id) });
+      response.status(200).send({
+        id: file._id,
+        userId: file.userId,
+        name: file.name,
+        type: file.type,
+        isPublic: file.isPublic,
+        parentId: file.parentId,
+      });
+    } else {
+      response.status(404).send({ error: 'Not found' });
+    }
+  }
+};
+
+exports.putUnpublish = async (request, response) => {
+  const fileId = request.params.id;
+  const { headers } = request;
+  const token = headers['x-token'];
+  const key = `auth_${token}`;
+  const userId = await redisClient.get(key);
+  const user = await dbClient.database.collection('users').findOne({ _id: ObjectId(userId) });
+  if (!user) {
+    response.status(401).send({ error: 'Unauthorized' });
+  } else {
+    const file = await dbClient.database.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(user._id) });
+    if (file) {
+      await dbClient.database.collection('files').updateOne({ _id: ObjectId(fileId) }, { $set: { isPublic: false } });
+      const file = await dbClient.database.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(user._id) });
+      response.status(200).send({
+        id: file._id,
+        userId: file.userId,
+        name: file.name,
+        type: file.type,
+        isPublic: file.isPublic,
+        parentId: file.parentId,
+      });
+    } else {
+      response.status(404).send({ error: 'Not found' });
+    }
+  }
+};
