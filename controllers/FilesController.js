@@ -5,7 +5,10 @@ import redisClient from '../utils/redis';
 
 const { ObjectId } = require('mongodb');
 const fs = require('fs');
-const queue = require('bull');
+const Queue = require('bull');
+const mime = require('mime-types');
+
+const fileQueue = new Queue('fileQueue');
 
 exports.postUpload = async (request, response) => {
   const { headers } = request;
@@ -61,6 +64,7 @@ exports.postUpload = async (request, response) => {
         parentId: files._id,
         localPath: path,
       });
+      fileQueue.add({ userId: user._id, fileId: file._id });
       const dict = file.ops;
       response.status(201).send({
         id: dict['0']._id,
@@ -258,7 +262,6 @@ exports.putUnpublish = async (request, response) => {
     }
   }
 };
-
 exports.getFile = async (request, response) => {
   const fileId = request.params.id;
   const { headers } = request;
@@ -276,15 +279,14 @@ exports.getFile = async (request, response) => {
   } else if (file.isPublic === false) {
     if (!token) {
       response.status(404).send({ error: 'Not found' });
-    } else if (file.userId !== user._id) {
-      response.status(404).send({ error: 'Not found' });
     } else {
       const files = await dbClient.database.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(user._id) });
       fs.readFile(files.localPath, (err, content) => {
         if (err) {
           console.log(err);
         }
-        response.send(content);
+        response.writeHead(200, { 'Content-Type': mime.contentType(files.name) });
+        response.end(content);
       });
     }
   } else if (file.isPublic === true) {
@@ -293,17 +295,17 @@ exports.getFile = async (request, response) => {
         if (err) {
           console.log(err);
         }
-        response.send(content);
+        response.writeHead(200, { 'Content-Type': mime.contentType(file.name) });
+        response.end(content);
       });
-    } else if (file.userId !== user._id) {
-      response.status(404).send({ error: 'Not found' });
     } else {
       const files = await dbClient.database.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(user._id) });
       fs.readFile(files.localPath, (err, content) => {
         if (err) {
           console.log(err);
         }
-        response.send(content);
+        response.writeHead(200, { 'Content-Type': mime.contentType(files.name) });
+        response.end(content);
       });
     }
   }
