@@ -272,22 +272,28 @@ exports.getFile = async (request, response) => {
   const file = await dbClient.database.collection('files').findOne({ _id: ObjectId(fileId) });
   if (!file) {
     response.status(404).send({ error: 'Not found' });
+  } else if (file.isPublic === false && !token) {
+    response.status(404).send({ error: 'Not found' });
   } else if (file.type === 'folder') {
     response.status(400).send({ error: 'A folder doesn\'t have content' });
   } else if (!fs.existsSync(file.localPath)) {
     response.status(404).send({ error: 'Not found' });
   } else if (file.isPublic === false) {
-    if (!token) {
-      response.status(404).send({ error: 'Not found' });
-    } else {
+    try {
       const files = await dbClient.database.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(user._id) });
-      fs.readFile(files.localPath, (err, content) => {
-        if (err) {
-          console.log(err);
-        }
-        response.writeHead(200, { 'Content-Type': mime.contentType(files.name) });
-        response.end(content);
-      });
+      if (files.type !== 'folder') {
+        fs.readFile(files.localPath, (err, content) => {
+          if (err) {
+            console.log(err);
+          }
+          response.writeHead(200, { 'Content-Type': mime.contentType(files.name) });
+          response.end(content);
+        });
+      } else {
+        response.status(404).send({ error: 'Not found' });
+      }
+    } catch (error) {
+      response.status(404).send({ error: 'Not found' });
     }
   } else if (file.isPublic === true) {
     if (!token) {
@@ -299,14 +305,18 @@ exports.getFile = async (request, response) => {
         response.end(content);
       });
     } else {
-      const files = await dbClient.database.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(user._id) });
-      fs.readFile(files.localPath, (err, content) => {
-        if (err) {
-          console.log(err);
-        }
-        response.writeHead(200, { 'Content-Type': mime.contentType(files.name) });
-        response.end(content);
-      });
+      try {
+        const files = await dbClient.database.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(user._id) });
+        fs.readFile(files.localPath, (err, content) => {
+          if (err) {
+            console.log(err);
+          }
+          response.writeHead(200, { 'Content-Type': mime.contentType(files.name) });
+          response.end(content);
+        });
+      } catch (error) {
+        response.status(404).send({ error: 'Not found' });
+      }
     }
   }
 };
